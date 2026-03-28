@@ -2,20 +2,45 @@
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 
 # Virtual environments
 venv/
+env/
 .env
+.env.*
+
+# Node / Web
+node_modules/
+dist/
+dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Database
 *.db
+*.sqlite3
 
-# ML models
+# ML models and generated metadata
 *.pkl
+*model_metadata.json
 
-# OS files
+# Data logging and datasets
+*.csv
+dataset/
+*.log
+logs/
+
+# Editor & OS files
 .DS_Store
 Thumbs.db
+.vscode/
+.idea/
+
+# Project Specific Overrides
 Back-End/finance.db
 Back-End/*.pkl
 Back-End/__pycache__/
+Back-End/transactions.csv
+Back-End/ledger.csv
