@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { predictTransaction, addTransaction } from '../api/client'
+import { predictTransaction, addTransaction, API_BASE_URL } from '../api/client'
 import styles from './AddTransaction.module.css'
 
 const CATEGORIES = ['Food','Transport','Housing','Entertainment','Shopping','Utilities','Health','Education','Income','Others']
@@ -95,7 +95,7 @@ export default function AddTransaction({ showToast }) {
     form.append('file', blob, 'recording.webm')
     setLoading(true)
     try {
-      const res = await fetch('http://127.0.0.1:8000/voice', { method: 'POST', body: form })
+      const res = await fetch(`${API_BASE_URL}/voice`, { method: 'POST', body: form })
       if (!res.ok) throw new Error(await res.text())
       const result = await res.json()
       setText(result.text)

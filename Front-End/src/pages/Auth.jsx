@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { API_BASE_URL } from '../api/client';
 import styles from './Auth.module.css';
 
 export default function Auth({ onLogin }) {
@@ -20,7 +21,7 @@ export default function Auth({ onLogin }) {
       const endpoint = isRegistering ? '/register' : '/login';
       const body = isRegistering ? { email, name, password } : { email, password };
       
-      const res = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)

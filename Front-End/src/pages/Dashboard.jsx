@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getTransactions, predictTransaction, addTransaction, getSummary } from '../api/client';
+import { getTransactions, predictTransaction, addTransaction, getSummary, API_BASE_URL } from '../api/client';
 import TopNav from '../components/TopNav';
 import styles from './Dashboard.module.css';
 
@@ -93,7 +93,7 @@ export default function Dashboard({ showToast }) {
     form.append('file', blob, 'recording.webm');
     setIsAnalyzing(true);
     try {
-      const res = await fetch('http://127.0.0.1:8000/voice', { method: 'POST', body: form });
+      const res = await fetch(`${API_BASE_URL}/voice`, { method: 'POST', body: form });
       if (!res.ok) throw new Error(await res.text());
       const result = await res.json();
       setText(result.text);
