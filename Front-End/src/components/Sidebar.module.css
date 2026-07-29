@@ -1,0 +1,136 @@
+.sidebar {
+  width: 260px;
+  min-height: 100vh;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 32px 0;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    min-height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 16px 0;
+  }
+}
+
+.brand {
+  padding: 0 32px;
+  margin-bottom: 48px;
+}
+
+.brand h2 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+
+.brandSub {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0 16px;
+  }
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 32px;
+  text-decoration: none;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 768px) {
+  .link {
+    padding: 8px 16px;
+    white-space: nowrap;
+  }
+}
+
+.link.active {
+  color: var(--text-primary);
+  background: var(--white);
+  border-right: 3px solid var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .link.active {
+    border-right: none;
+    border-bottom: 3px solid var(--text-primary);
+  }
+}
+
+.icon {
+  font-size: 16px;
+  opacity: 0.8;
+}
+
+.link.active .icon { opacity: 1; }
+
+.userProfile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 32px;
+}
+
+@media (max-width: 768px) {
+  .userProfile {
+    display: none;
+  }
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  background: var(--text-primary);
+  color: var(--white);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.plan {
+  font-size: 11px;
+  color: var(--text-muted);
+}

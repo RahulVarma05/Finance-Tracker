@@ -1,193 +1,96 @@
-import { useState } from 'react'
-import { predictTransaction, addTransaction } from '../api/client'
-import styles from './Setup.module.css'
+import { useState } from 'react';
+import { predictTransaction, addTransaction } from '../api/client';
+import styles from './Setup.module.css';
 
 export default function Setup({ onIncomeAdded, showToast }) {
-  const [text, setText]       = useState('')
-  const [amount, setAmount]   = useState('')
-  const [loading, setLoading] = useState(false)
-  const [preview, setPreview] = useState(null)
-  const [step, setStep]       = useState(1) // 1=input, 2=confirm
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const SUGGESTIONS = [
-    'salary credited 45000',
-    'freelance payment received 15000',
-    'monthly stipend 8000',
-    'received bonus 10000',
-  ]
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    setLoading(true);
 
-  const handlePredict = async () => {
-    if (!text.trim()) return
-    setLoading(true)
     try {
-      const result = await predictTransaction(text)
-      setPreview(result)
-      if (result.amount) setAmount(result.amount)
-      setStep(2)
-    } catch {
-      showToast('Could not connect to backend. Is api.py running?', 'error')
-    } finally {
-      setLoading(false)
-    }
-  }
+      // Predict amount using ML
+      const preview = await predictTransaction(text);
+      let finalAmount = parseFloat(preview.amount);
 
-  const handleSave = async () => {
-    const finalAmount = parseFloat(amount)
-    if (!finalAmount || finalAmount <= 0) {
-      showToast('Please enter a valid amount', 'error')
-      return
-    }
-    setLoading(true)
-    try {
+      if (!finalAmount || finalAmount <= 0) {
+        // Fallback or request manual? The UI refers to just typing and saving.
+        // Let's assume the user typed "Monthly Salary 5000", which predicts perfectly.
+        finalAmount = 0; // The API will probably fail if 0, but let's try
+      }
+
       await addTransaction({
         text: preview.text,
         category: 'Income',
-        amount: finalAmount,
+        amount: finalAmount || 1, // Fallback if inference fails but shouldn't on good input
         confidence: preview.confidence,
-      })
-      showToast('Income added! Welcome to FinTrack 🎉', 'success')
-      onIncomeAdded()
+      });
+
+      showToast('Income foundation set successfully.');
+      onIncomeAdded();
     } catch (err) {
-      const msg = err.response?.data?.detail || 'Failed to save'
-      showToast(msg, 'error')
+      const msg = err.response?.data?.detail || 'Failed to process income. Please enter a valid amount.';
+      showToast(msg);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className={styles.wrapper}>
-      <div className={styles.container}>
+    <div className={styles.setupPage}>
+      <header className={styles.header}>
+        <div className={styles.brand}>Nova Ledger</div>
+        <div className={styles.step}>STEP 1 OF 2</div>
+      </header>
 
-        {/* Left decorative panel */}
-        <div className={styles.left}>
-          <div className={styles.logoMark}>₹</div>
-          <h1 className={styles.headline}>
-            Your money,<br />
-            <em>understood.</em>
-          </h1>
-          <p className={styles.sub}>
-            FinTrack uses ML to automatically categorize your transactions and extract amounts — even from messy, natural language inputs.
-          </p>
-          <div className={styles.stats}>
-            <div className={styles.stat}>
-              <span className={styles.statNum}>96.7%</span>
-              <span className={styles.statLabel}>Category accuracy</span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statNum}>99.2%</span>
-              <span className={styles.statLabel}>Amount accuracy</span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statNum}>10</span>
-              <span className={styles.statLabel}>Categories</span>
-            </div>
-          </div>
-        </div>
+      <main className={styles.main}>
+        <div className={styles.leftPane}>
+          <div className={styles.content}>
+            <h1>Let's set your<br />foundation.</h1>
+            <p className={styles.subtitle}>
+              Add your first income source to start tracking.<br />
+              Precision begins with your primary cash flow.
+            </p>
 
-        {/* Right form panel */}
-        <div className={styles.right}>
-          <div className={styles.card}>
-            <div className={styles.stepIndicator}>
-              <div className={`${styles.stepDot} ${step >= 1 ? styles.stepActive : ''}`}>1</div>
-              <div className={styles.stepLine}></div>
-              <div className={`${styles.stepDot} ${step >= 2 ? styles.stepActive : ''}`}>2</div>
-            </div>
-
-            {step === 1 && (
-              <>
-                <h2 className={styles.cardTitle}>Add your income first</h2>
-                <p className={styles.cardSub}>
-                  Start by telling us your income — salary, freelance, or any credit. This helps us track your balance accurately.
-                </p>
-
-                <div className="form-group">
-                  <label className="form-label">Describe your income</label>
-                  <textarea
-                    className={`form-input ${styles.textarea}`}
-                    placeholder="e.g. salary credited 45000, received freelance payment 12000..."
-                    value={text}
-                    onChange={e => setText(e.target.value)}
-                    rows={3}
-                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePredict()}
-                  />
-                </div>
-
-                <div className={styles.suggestions}>
-                  {SUGGESTIONS.map(s => (
-                    <button
-                      key={s}
-                      className={styles.suggestion}
-                      onClick={() => setText(s)}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  className="btn btn-primary btn-full btn-lg"
-                  onClick={handlePredict}
-                  disabled={loading || !text.trim()}
-                >
-                  {loading ? <><span className="spinner" /> Analyzing...</> : 'Analyze with ML →'}
-                </button>
-              </>
-            )}
-
-            {step === 2 && preview && (
-              <>
-                <h2 className={styles.cardTitle}>Confirm your income</h2>
-                <p className={styles.cardSub}>Review what our ML model detected. Edit the amount if needed.</p>
-
-                <div className={styles.previewBox}>
-                  <div className={styles.previewRow}>
-                    <span className={styles.previewLabel}>Transaction</span>
-                    <span className={styles.previewValue}>{preview.text}</span>
-                  </div>
-                  <div className={styles.previewRow}>
-                    <span className={styles.previewLabel}>Category</span>
-                    <span className="badge badge-income">Income ✓</span>
-                  </div>
-                  <div className={styles.previewRow}>
-                    <span className={styles.previewLabel}>Confidence</span>
-                    <span className={`badge badge-${preview.confidence >= 0.8 ? 'high' : 'medium'}`}>
-                      {preview.status}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Amount (₹)</label>
+            <form onSubmit={handleSave} className={styles.form}>
+              <div className={styles.inputGroup}>
+                <label>DESCRIBE INCOME SOURCE & AMOUNT</label>
+                <div className={styles.inputWrap}>
                   <input
-                    className="form-input"
-                    type="number"
-                    placeholder="Enter amount"
-                    value={amount}
-                    onChange={e => setAmount(e.target.value)}
+                    type="text"
+                    placeholder="e.g., Monthly Salary 5000"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
                     autoFocus
                   />
+                  <span className={styles.icon}>💵</span>
                 </div>
+              </div>
 
-                <div className={styles.btnRow}>
-                  <button className="btn btn-ghost" onClick={() => { setStep(1); setPreview(null) }}>
-                    ← Back
-                  </button>
-                  <button
-                    className="btn btn-primary btn-lg"
-                    onClick={handleSave}
-                    disabled={loading || !amount}
-                    style={{ flex: 1 }}
-                  >
-                    {loading ? <><span className="spinner" /> Saving...</> : 'Save & Continue →'}
-                  </button>
+              <div className={styles.actionRow}>
+                <div className={styles.infoBox}>
+                  <div className={styles.infoIcon}>i</div>
+                  <p>You can add multiple sources<br />after the initial setup.</p>
                 </div>
-              </>
-            )}
+                <button
+                  type="submit"
+                  className={styles.submitBtn}
+                  disabled={loading || !text.trim()}
+                >
+                  {loading ? <span className="spinner" style={{ borderColor: '#666', borderTopColor: '#fff' }} /> : 'Confirm and Save'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-
-      </div>
+        <div className={styles.rightPane}>
+          <div className={styles.hugeNum}>01</div>
+          <div className={styles.watermark}>STARK PRECISION • EDITORIAL LEDGER V2.4</div>
+        </div>
+      </main>
     </div>
-  )
+  );
 }

@@ -19,7 +19,9 @@ from database import (
     update_transaction,
     delete_transaction,
     get_summary,
-    has_income_transaction
+    has_income_transaction,
+    create_user,
+    verify_user
 )
 
 app = FastAPI(
@@ -32,7 +34,7 @@ init_db()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:5174"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -75,6 +77,15 @@ class SummaryResponse(BaseModel):
     by_category:       dict
     transaction_count: int
 
+class RegisterRequest(BaseModel):
+    email: str
+    name: str
+    password: str
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
 @app.get("/")
 def read_root():
     return {
@@ -83,8 +94,27 @@ def read_root():
         "version": "1.0.0"
     }
 
+@app.post("/register")
+def register_user(req: RegisterRequest):
+    user = create_user(req.email.lower(), req.name, req.password)
+    if not user:
+        raise HTTPException(status_code=400, detail="Account with this email already exists.")
+    return {"message": "User created", "user": user}
+
+@app.post("/login")
+def login_user(req: LoginRequest):
+    user = verify_user(req.email.lower(), req.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+    return {"message": "Login successful", "user": user}
+
+from fastapi import UploadFile, File, Header
+import tempfile
+
+whisper_model = None
+
 @app.post("/predict", response_model=PredictResponse)
-def predict(request: PredictRequest):
+def predict(request: PredictRequest, x_user_id: str = Header("default")):
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="Transaction text cannot be empty.")
     try:
@@ -108,14 +138,15 @@ def predict(request: PredictRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/transaction/add", response_model=TransactionResponse)
-def add(req: AddTransactionRequest):
-    if req.category != "Income" and not has_income_transaction():
+def add(req: AddTransactionRequest, x_user_id: str = Header("default")):
+    if req.category != "Income" and not has_income_transaction(x_user_id):
         raise HTTPException(
             status_code=400,
             detail="Please add your income first before logging expenses."
         )
     try:
         result = add_transaction(
+            user_id=x_user_id,
             text=req.text,
             category=req.category,
             amount=req.amount,
@@ -126,34 +157,34 @@ def add(req: AddTransactionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/transactions", response_model=list[TransactionResponse])
-def get_transactions(limit: int = 50, offset: int = 0):
+def get_transactions(limit: int = 50, offset: int = 0, x_user_id: str = Header("default")):
     try:
-        rows = get_all_transactions(limit=limit, offset=offset)
+        rows = get_all_transactions(user_id=x_user_id, limit=limit, offset=offset)
         return [TransactionResponse(**row) for row in rows]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/transaction/{tx_id}", response_model=TransactionResponse)
-def get_transaction(tx_id: int):
-    row = get_transaction_by_id(tx_id)
+def get_transaction(tx_id: int, x_user_id: str = Header("default")):
+    row = get_transaction_by_id(x_user_id, tx_id)
     if not row:
         raise HTTPException(status_code=404, detail="Transaction not found.")
     return TransactionResponse(**row)
 
 @app.get("/summary", response_model=SummaryResponse)
-def summary():
+def summary(x_user_id: str = Header("default")):
     try:
-        result = get_summary()
+        result = get_summary(x_user_id)
         return SummaryResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/transaction/{tx_id}")
-def update(tx_id: int, req: UpdateCategoryRequest):
-    row = get_transaction_by_id(tx_id)
+def update(tx_id: int, req: UpdateCategoryRequest, x_user_id: str = Header("default")):
+    row = get_transaction_by_id(x_user_id, tx_id)
     if not row:
         raise HTTPException(status_code=404, detail="Transaction not found.")
-    success = update_transaction(tx_id=tx_id, category=req.category)
+    success = update_transaction(user_id=x_user_id, tx_id=tx_id, category=req.category)
     if not success:
         raise HTTPException(status_code=500, detail="Update failed.")
     return {
@@ -163,11 +194,11 @@ def update(tx_id: int, req: UpdateCategoryRequest):
     }
 
 @app.delete("/transaction/{tx_id}")
-def delete(tx_id: int):
-    row = get_transaction_by_id(tx_id)
+def delete(tx_id: int, x_user_id: str = Header("default")):
+    row = get_transaction_by_id(x_user_id, tx_id)
     if not row:
         raise HTTPException(status_code=404, detail="Transaction not found.")
-    success = delete_transaction(tx_id)
+    success = delete_transaction(x_user_id, tx_id)
     if not success:
         raise HTTPException(status_code=500, detail="Delete failed.")
     return {
@@ -176,16 +207,36 @@ def delete(tx_id: int):
     }
 
 @app.get("/has-income")
-def check_has_income():
+def check_has_income(x_user_id: str = Header("default")):
     try:
-        has = has_income_transaction()
+        has = has_income_transaction(x_user_id)
         return {"has_income": has}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/voice")
+async def process_voice(file: UploadFile = File(...)):
+    global whisper_model
+    import whisper
+    if whisper_model is None:
+        try:
+            whisper_model = whisper.load_model("tiny")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Whisper init failed: {e}")
+            
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+            
+        result = whisper_model.transcribe(tmp_path, language='en')
+        return {"text": result["text"].strip()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
+    import os
     import uvicorn
-    print("Starting Finance Tracker API → http://127.0.0.1:8000")
-    print("API Docs        → http://127.0.0.1:8000/docs")
-    print("Alt Docs        → http://127.0.0.1:8000/redoc")
-    uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    print(f"Starting Finance Tracker API on port {port}...")
+    uvicorn.run("api:app", host="0.0.0.0", port=port)

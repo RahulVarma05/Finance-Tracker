@@ -1,0 +1,211 @@
+.authContainer {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Left Pane (Dark) */
+.leftPane {
+  flex: 1;
+  background: linear-gradient(145deg, #181818 0%, #111111 60%, #0a0a0a 100%);
+  color: white;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 80px;
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .leftPane { display: none; }
+}
+
+.compassIcon {
+  position: absolute;
+  top: 80px;
+  right: 80px;
+  opacity: 0.15;
+  transform: scale(2.5);
+  color: #fff;
+}
+
+.brandingBox {
+  max-width: 400px;
+}
+
+.logoRow {
+  margin-bottom: 48px;
+}
+
+.logoRow h2 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.logoLine {
+  width: 40px;
+  height: 2px;
+  background: var(--income);
+  margin-top: 12px;
+}
+
+.brandingBox h1 {
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  margin-bottom: 24px;
+}
+
+.brandingBox p {
+  color: #888;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Right Pane (White) */
+.rightPane {
+  flex: 1;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  position: relative;
+}
+
+.formContainer {
+  width: 100%;
+  max-width: 440px;
+}
+
+.headerRow {
+  margin-bottom: 48px;
+}
+
+.headerRow h1 {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 8px;
+}
+
+.headerRow p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.inputGroup label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.inputGroup input {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0 16px 0;
+  font-size: 16px;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.inputGroup input:focus {
+  border-color: var(--accent);
+}
+
+.inputGroup input::placeholder {
+  color: #ccc;
+}
+
+.pwdLabelRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.forgot {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.secureBadge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+.secureBars {
+  display: flex;
+  gap: 3px;
+}
+
+.scBar, .scBarGhost {
+  width: 14px;
+  height: 3px;
+  border-radius: 1px;
+}
+
+.scBar { background: var(--income); }
+.scBarGhost { background: var(--border); }
+
+.secureBadge span {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.submitBtn {
+  background: var(--text-primary);
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.submitBtn:hover {
+  background: #000;
+}
+
+.registerPrompt {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.registerPrompt button {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 4px;
+}

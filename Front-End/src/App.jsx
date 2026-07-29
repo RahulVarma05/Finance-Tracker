@@ -1,14 +1,16 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import Navbar from './components/Navbar'
+import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
-import AddTransaction from './pages/AddTransaction'
-import History from './pages/History'
 import Setup from './pages/Setup'
+import History from './pages/History'
+import Stats from './pages/Stats'
+import Auth from './pages/Auth'
 import { checkHasIncome } from './api/client'
 
 export default function App() {
-  const [hasIncome, setHasIncome] = useState(null) // null = loading
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('userId'))
+  const [hasIncome, setHasIncome] = useState(null)
   const [toast, setToast]         = useState(null)
 
   const showToast = (message, type = 'success') => {
@@ -25,81 +27,95 @@ export default function App() {
     }
   }
 
-  useEffect(() => { refreshIncomeStatus() }, [])
+  useEffect(() => { 
+    if (isAuthenticated) refreshIncomeStatus() 
+  }, [isAuthenticated])
 
-  // Loading state
+  if (!isAuthenticated) {
+    return <Auth onLogin={() => setIsAuthenticated(true)} />
+  }
+
   if (hasIncome === null) {
     return (
       <div style={{
         minHeight: '100vh', display: 'flex',
         alignItems: 'center', justifyContent: 'center',
         flexDirection: 'column', gap: '16px',
-        background: 'var(--off-white)'
+        background: 'var(--bg-main)'
       }}>
         <div style={{
           width: 48, height: 48,
           background: 'var(--accent)',
-          borderRadius: 12,
+          borderRadius: 8,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 24, color: 'white',
-          fontFamily: 'var(--font-display)',
-          animation: 'pulse 1.5s ease infinite'
         }}>₹</div>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Loading FinTrack...</p>
-        <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Loading Nova Ledger...</p>
       </div>
     )
   }
 
+  // Define layout wrapper
+  const AppLayout = ({ children }) => (
+    <div className="app-layout">
+      {hasIncome && <Sidebar />}
+      <main className="main-content">
+        {children}
+      </main>
+    </div>
+  )
+
   return (
     <BrowserRouter>
-      {hasIncome && <Navbar />}
+      <AppLayout>
+        <Routes>
+          <Route
+            path="/setup"
+            element={
+              hasIncome
+                ? <Navigate to="/" replace />
+                : <Setup onIncomeAdded={() => setHasIncome(true)} showToast={showToast} />
+            }
+          />
+          <Route
+            path="/"
+            element={
+              !hasIncome
+                ? <Navigate to="/setup" replace />
+                : <Dashboard showToast={showToast} />
+            }
+          />
+          {/* We will route Stats mapping here soon */}
+          <Route
+            path="/stats"
+            element={
+              !hasIncome
+                ? <Navigate to="/setup" replace />
+                : <Stats showToast={showToast} /> 
+            }
+          />
+          <Route
+            path="/savings"
+            element={
+              !hasIncome
+                ? <Navigate to="/setup" replace />
+                : <Dashboard showToast={showToast} /> /* replace with Savings */
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              !hasIncome
+                ? <Navigate to="/setup" replace />
+                : <History showToast={showToast} />
+            }
+          />
+          <Route path="*" element={<Navigate to={hasIncome ? '/' : '/setup'} replace />} />
+        </Routes>
+      </AppLayout>
 
-      <Routes>
-        {/* Setup page - shown only when no income */}
-        <Route
-          path="/setup"
-          element={
-            hasIncome
-              ? <Navigate to="/" replace />
-              : <Setup onIncomeAdded={() => { setHasIncome(true); }} showToast={showToast} />
-          }
-        />
-
-        {/* Protected routes - redirect to setup if no income */}
-        <Route
-          path="/"
-          element={
-            !hasIncome
-              ? <Navigate to="/setup" replace />
-              : <Dashboard showToast={showToast} />
-          }
-        />
-        <Route
-          path="/add"
-          element={
-            !hasIncome
-              ? <Navigate to="/setup" replace />
-              : <AddTransaction showToast={showToast} />
-          }
-        />
-        <Route
-          path="/history"
-          element={
-            !hasIncome
-              ? <Navigate to="/setup" replace />
-              : <History showToast={showToast} />
-          }
-        />
-
-        {/* Catch all */}
-        <Route path="*" element={<Navigate to={hasIncome ? '/' : '/setup'} replace />} />
-      </Routes>
-
-      {/* Global Toast */}
       {toast && (
-        <div className={`toast toast-${toast.type}`}>
-          <span>{toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : '!'}</span>
+        <div className="toast">
           {toast.message}
         </div>
       )}

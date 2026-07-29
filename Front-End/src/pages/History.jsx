@@ -1,240 +1,162 @@
-import { useState, useEffect } from 'react'
-import { getTransactions, deleteTransaction, updateTransaction } from '../api/client'
-import styles from './History.module.css'
+import { useState, useEffect } from 'react';
+import { getTransactions, deleteTransaction } from '../api/client';
+import TopNav from '../components/TopNav';
+import styles from './History.module.css';
 
-const CATEGORIES = ['Food','Transport','Housing','Entertainment','Shopping','Utilities','Health','Education','Income','Others']
-
-const CATEGORY_ICONS = {
-  Food:'🍽', Transport:'🚗', Housing:'🏠', Entertainment:'🎬',
-  Shopping:'🛍', Utilities:'💡', Health:'💊', Education:'📚',
-  Income:'💰', Others:'📦',
-}
-
-function getCategoryClass(cat) {
-  return `cat-${cat?.toLowerCase() || 'others'}`
-}
+const CATEGORY_COLORS = {
+  Food: '#111111', Transport: '#444444', Housing: '#777777',
+  Entertainment: '#999999', Shopping: '#aaaaaa', Utilities: '#cccccc',
+  Health: '#dddddd', Education: '#eeeeee', Income: '#059669', Others: '#f5f5f5',
+};
 
 export default function History({ showToast }) {
-  const [transactions, setTransactions] = useState([])
-  const [loading, setLoading]           = useState(true)
-  const [editId, setEditId]             = useState(null)
-  const [editCat, setEditCat]           = useState('')
-  const [deleteId, setDeleteId]         = useState(null)
-  const [filter, setFilter]             = useState('all') // all | income | expense
-  const [search, setSearch]             = useState('')
-  const [page, setPage]                 = useState(0)
-  const PAGE_SIZE = 20
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 10;
 
   const load = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const data = await getTransactions(100, 0)
-      setTransactions(data)
+      const data = await getTransactions(200, 0);
+      setTransactions(data);
     } catch {
-      showToast('Failed to load transactions', 'error')
+      showToast('Failed to load transactions', 'error');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); }, []);
 
-  // Filter + search
   const filtered = transactions.filter(tx => {
-    const matchType   = filter === 'all' || tx.type === filter
-    const matchSearch = !search || tx.text.toLowerCase().includes(search.toLowerCase()) || tx.category.toLowerCase().includes(search.toLowerCase())
-    return matchType && matchSearch
-  })
+    const matchType = filter === 'all' || tx.type === filter;
+    const matchSearch = !search || tx.text.toLowerCase().includes(search.toLowerCase()) || tx.category.toLowerCase().includes(search.toLowerCase());
+    return matchType && matchSearch;
+  });
 
-  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
 
   const handleDelete = async (id) => {
     try {
-      await deleteTransaction(id)
-      setTransactions(prev => prev.filter(t => t.id !== id))
-      setDeleteId(null)
-      showToast('Transaction deleted', 'success')
+      await deleteTransaction(id);
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      showToast('Transaction deleted');
     } catch {
-      showToast('Failed to delete', 'error')
+      showToast('Failed to delete', 'error');
     }
-  }
+  };
 
-  const handleUpdate = async (id) => {
-    try {
-      await updateTransaction(id, editCat)
-      setTransactions(prev => prev.map(t => t.id === id ? { ...t, category: editCat, type: editCat === 'Income' ? 'income' : 'expense' } : t))
-      setEditId(null)
-      showToast('Category updated', 'success')
-    } catch {
-      showToast('Failed to update', 'error')
-    }
-  }
-
-  const totalIncome  = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+  const navLinks = [];
 
   return (
-    <div className="page-wrapper page-enter">
-      {/* Header */}
-      <div className={styles.pageHeader}>
-        <div>
-          <h1 className={styles.pageTitle}>History</h1>
-          <p className={styles.pageSub}>{transactions.length} total transactions</p>
-        </div>
-      </div>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <TopNav links={navLinks} />
 
-      {/* Stats strip */}
-      <div className={styles.statsStrip}>
-        <div className={styles.stripStat}>
-          <span className={styles.stripLabel}>Income</span>
-          <span className={styles.stripVal} style={{ color: 'var(--accent)' }}>₹{totalIncome.toLocaleString('en-IN')}</span>
-        </div>
-        <div className={styles.stripDivider} />
-        <div className={styles.stripStat}>
-          <span className={styles.stripLabel}>Expenses</span>
-          <span className={styles.stripVal} style={{ color: 'var(--danger)' }}>₹{totalExpense.toLocaleString('en-IN')}</span>
-        </div>
-        <div className={styles.stripDivider} />
-        <div className={styles.stripStat}>
-          <span className={styles.stripLabel}>Balance</span>
-          <span className={styles.stripVal} style={{ color: totalIncome - totalExpense >= 0 ? 'var(--accent)' : 'var(--danger)' }}>
-            ₹{(totalIncome - totalExpense).toLocaleString('en-IN')}
-          </span>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className={styles.filterRow}>
-        <div className={styles.searchWrap}>
-          <span className={styles.searchIcon}>⌕</span>
-          <input
-            className={`form-input ${styles.searchInput}`}
-            placeholder="Search transactions..."
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(0) }}
-          />
-        </div>
-        <div className={styles.filterTabs}>
-          {['all', 'income', 'expense'].map(f => (
-            <button
-              key={f}
-              className={`${styles.filterTab} ${filter === f ? styles.filterTabActive : ''}`}
-              onClick={() => { setFilter(f); setPage(0) }}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {loading ? (
-          <div style={{ padding: '60px', display: 'flex', justifyContent: 'center' }}>
-            <span className="spinner" style={{ width: 32, height: 32, borderWidth: 3 }} />
-          </div>
-        ) : paginated.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">🔍</div>
-            <h3>No transactions found</h3>
-            <p>{search ? 'Try a different search term' : 'Add your first transaction'}</p>
-          </div>
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr className={styles.tableHead}>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Category</th>
-                <th>Confidence</th>
-                <th style={{ textAlign: 'right' }}>Amount</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.map(tx => (
-                <tr key={tx.id} className={styles.tableRow}>
-                  <td className={styles.dateCell}>{tx.date?.split(' ')[0]}</td>
-                  <td className={styles.textCell}>{tx.text}</td>
-                  <td>
-                    {editId === tx.id ? (
-                      <div className={styles.editCat}>
-                        <select
-                          className="form-input"
-                          style={{ padding: '5px 8px', fontSize: 13 }}
-                          value={editCat}
-                          onChange={e => setEditCat(e.target.value)}
-                        >
-                          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <button className="btn btn-primary btn-sm" onClick={() => handleUpdate(tx.id)}>✓</button>
-                        <button className="btn btn-ghost btn-sm" onClick={() => setEditId(null)}>✕</button>
-                      </div>
-                    ) : (
-                      <span className={`badge ${getCategoryClass(tx.category)}`}>
-                        {CATEGORY_ICONS[tx.category]} {tx.category}
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    <div className={styles.confWrap}>
-                      <div className={styles.confBar}>
-                        <div
-                          className={styles.confFill}
-                          style={{
-                            width: `${tx.confidence * 100}%`,
-                            background: tx.confidence >= 0.8 ? 'var(--accent)' : tx.confidence >= 0.5 ? 'var(--warning)' : 'var(--danger)'
-                          }}
-                        />
-                      </div>
-                      <span className={styles.confLabel}>{(tx.confidence * 100).toFixed(0)}%</span>
-                    </div>
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <span className={tx.type === 'income' ? styles.amountIncome : styles.amountExpense}>
-                      {tx.type === 'income' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN')}
-                    </span>
-                  </td>
-                  <td>
-                    <div className={styles.actions}>
-                      {deleteId === tx.id ? (
-                        <>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(tx.id)}>Delete</button>
-                          <button className="btn btn-ghost btn-sm" onClick={() => setDeleteId(null)}>Cancel</button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => { setEditId(tx.id); setEditCat(tx.category) }}
-                            title="Edit category"
-                          >✎</button>
-                          <button
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => setDeleteId(tx.id)}
-                            title="Delete"
-                            style={{ color: 'var(--danger)' }}
-                          >✕</button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
+      <div className="page-wrapper">
+        
+        {/* Global Archive Search & Filters */}
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 8 }}>GLOBAL ARCHIVE</div>
+          <div className={styles.filterBar}>
+            <div className={styles.searchWrap}>
+              <span className={styles.searchIcon}>⌕</span>
+              <input
+                className={styles.searchInput}
+                placeholder="Search by text or category"
+                value={search}
+                onChange={e => { setSearch(e.target.value); setPage(0); }}
+              />
+            </div>
+            <div className={styles.filterTabs}>
+              {['all', 'income', 'expense'].map(f => (
+                <button
+                  key={f}
+                  className={`${styles.filterTab} ${filter === f ? styles.filterTabActive : ''}`}
+                  onClick={() => { setFilter(f); setPage(0); }}
+                >
+                  {f.toUpperCase()}
+                </button>
               ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className={styles.pagination}>
-          <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => p - 1)} disabled={page === 0}>← Prev</button>
-          <span className={styles.pageInfo}>Page {page + 1} of {totalPages}</span>
-          <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}>Next →</button>
+            </div>
+          </div>
         </div>
-      )}
+
+        {/* Transactions Table */}
+        <div className="card" style={{ padding: 0 }}>
+          <div className={styles.tableHeader}>
+            <div style={{ width: '10%' }}>DATE</div>
+            <div style={{ width: '25%' }}>DESCRIPTION</div>
+            <div style={{ width: '15%' }}>CATEGORY</div>
+            <div style={{ width: '15%' }}>REFERENCE</div>
+            <div style={{ width: '15%' }}>ML CONFIDENCE</div>
+            <div style={{ width: '12%', textAlign: 'right' }}>AMOUNT</div>
+            <div style={{ width: '8%', textAlign: 'right' }}>ACTIONS</div>
+          </div>
+
+          <div className={styles.tableBody}>
+            {loading ? (
+              <div style={{ padding: 40, textAlign: 'center' }}><span className="spinner" /></div>
+            ) : paginated.length === 0 ? (
+              <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>No records found</div>
+            ) : (
+              paginated.map(tx => (
+                <div key={tx.id} className={styles.tableRow}>
+                  <div style={{ width: '10%', fontSize: 13 }}>
+                    {tx.date.split(' ')[0]}
+                  </div>
+                  <div style={{ width: '25%' }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{tx.text}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 4 }}>
+                      {tx.type === 'income' ? 'CREDIT' : 'DEBIT'}
+                    </div>
+                  </div>
+                  <div style={{ width: '15%' }}>
+                    <span className="badge" style={{ background: tx.type === 'income' ? 'var(--income)' : '#e0e0e0', color: tx.type === 'income' ? '#fff' : '#111' }}>
+                      {tx.category}
+                    </span>
+                  </div>
+                  <div style={{ width: '15%', fontSize: 11, color: 'var(--text-muted)' }}>
+                    TXN-{String(tx.id).padStart(5, '0')}-A
+                  </div>
+                  <div style={{ width: '15%' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ height: 4, width: '100%', background: 'var(--border)', maxWidth: 80 }}>
+                        <div style={{ height: '100%', width: `${tx.confidence * 100}%`, background: tx.confidence > 0.8 ? 'var(--income)' : 'var(--expense)' }} />
+                      </div>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: tx.confidence > 0.8 ? 'var(--income)' : 'var(--expense)' }}>
+                        {tx.confidence >= 0.8 ? 'Verified' : `${(tx.confidence*100).toFixed(0)}% Conf.`}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ width: '12%', textAlign: 'right', fontWeight: 600, fontSize: 14, color: tx.type === 'income' ? 'var(--income)' : 'var(--expense)' }}>
+                    {tx.type === 'income' ? '+' : '-'}₹{tx.amount.toLocaleString()}
+                  </div>
+                  <div style={{ width: '8%', textAlign: 'right' }}>
+                    <button onClick={() => handleDelete(tx.id)} className="btn btn-ghost btn-sm" style={{ padding: '4px 8px', color: 'var(--text-muted)' }}>✕</button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Pagination & Footer summary */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>
+            SHOWING PAGE {page + 1} OF {totalPages}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-secondary btn-sm" disabled={page === 0} onClick={() => setPage(page-1)}>⟨</button>
+            <button className="btn btn-primary btn-sm" style={{ padding: '0 16px' }}>{page + 1}</button>
+            <button className="btn btn-secondary btn-sm" disabled={page >= totalPages - 1} onClick={() => setPage(page+1)}>⟩</button>
+          </div>
+        </div>
+
+      </div>
     </div>
-  )
+  );
 }
