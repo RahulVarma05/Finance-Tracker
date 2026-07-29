@@ -14,25 +14,45 @@ import train_model # Import module to register functions for pickle
 # Minimum probability required to trust ranking model.
 AMOUNT_PROB_THRESHOLD = 0.20
 
+# Function to auto-train missing models if not found
+def ensure_models_exist():
+    if not os.path.exists('transactions.csv'):
+        print("Generating synthetic transactions dataset...")
+        import generate_data
+        dataset = generate_data.generate_dataset(n_samples=3000, imbalance=True)
+        with open('transactions.csv', 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['text', 'category', 'amount'])
+            writer.writerows(dataset)
+        print("Generated transactions.csv")
+    
+    if not os.path.exists('financial_model.pkl'):
+        print("Training category classifier model...")
+        train_model.train_and_evaluate()
+        
+    if not os.path.exists('amount_extractor.pkl'):
+        print("Training amount extractor model...")
+        import train_amount_model
+        train_amount_model.train_amount_extractor()
+
+# Ensure models exist before loading
+ensure_models_exist()
+
 # Load Model
 try:
     model_pipeline = joblib.load('financial_model.pkl')
     print("Model loaded successfully.")
-except FileNotFoundError:
-    print("Error: Model file 'financial_model.pkl' not found. Please run train_model.py first.")
-    sys.exit(1)
-except ImportError as e:
+except Exception as e:
     print(f"Error loading model: {e}")
-    print("Make sure train_model.py is in the same directory.")
     sys.exit(1)
 
 # Load Amount Extractor Model
 try:
     amount_model = joblib.load('amount_extractor.pkl')
     print("Amount Extractor loaded successfully.")
-except FileNotFoundError:
+except Exception as e:
     amount_model = None
-    print("Amount Extractor not found. Using fallback logic.")
+    print("Amount Extractor fallback active.")
 
 def extract_candidates_with_features(text):
     """
